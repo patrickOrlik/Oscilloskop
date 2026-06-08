@@ -1,18 +1,29 @@
-#include <Arduino.h>
+#define F_CPU 16000000UL  // your clock speed
+#include <util/delay.h>
+#include <avr/interrupt.h>
+#include "UART.h"
+#include "ADC.h"
+#include <avr/io.h>
+#include "SPI.h"
+#include <stdio.h>
+#include <stdlib.h>
+char buffer[32];
 
-// put function declarations here:
-int myFunction(int, int);
 
-void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+char Datatest;
+int main(){
+SPI_MasterInit();
+uart_init();
+
+Datatest = 0x01;
+for (int i = 0; i < 16; i++){
+SPI_MasterTransmit(Datatest);
+Datatest = Datatest + 1;
+sprintf(buffer, "number is %d \n", );
+putstringuart(buffer);
+_delay_ms(1000);
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
-}
 
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+
 }

@@ -4,26 +4,22 @@
 
 void SPI_MasterInit(void)
 {
-    DDRB |= (1<<DDB2) | (1<<DDB1) | (1<<DDB0);  // MOSI, SCK, SS as output
-    DDRB &=~ (1<<DDB3);                         // MISO as input
+    DDRB |= (1<<DDB2) | (1<<DDB1) | (1<<DDB0);  // MOSI, SCK, SS as output MOSI=51 SS =53 SCK =52
+    DDRB &=~ (1<<DDB3);                         // MISO as input (Pin No.50)
     SPCR = 0;                                   // Clear register first
     SPCR |= (1<<SPE) | (1<<MSTR);               // Enable SPI, Master
-    SPCR |= (1<<CPOL);                         // CPOL = 1
-    SPCR |= (1<<CPHA);                         // CPHA = 1
+    SPCR &= ~(1 << CPOL);   // CPOL = 0
+    SPCR &= ~(1 << CPHA);   // CPHA = 0 
     SPCR |= (1<<SPR1);                          // fclk/64 (250 kHz if 16MHz)
 }
 
 unsigned char SPI_MasterTransmit(unsigned char cData)
 {
 PORTB &=~ (1<< PB0); // set SS low
-SPCR &= ~(1 << CPOL);   // CPOL = 0
-SPCR &= ~(1 << CPHA);   // CPHA = 0 
-
 SPDR = cData;// transmission start
 while(!(SPSR & (1<<SPIF)));//wait for complete transmit
 PORTB |=(1<<PB0); //set SS high
 return SPDR;
-
 ;
 }
 
