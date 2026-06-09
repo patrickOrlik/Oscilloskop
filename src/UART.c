@@ -4,13 +4,10 @@
 // initializes UART
 
 void uart_init(void) {
-
-    
     UBRR0H = (unsigned char)(MYUBRRF >> 8); // stores the 4 MS bits in the UBRR0H reg
     UBRR0L = (unsigned char)MYUBRRF; // stores the 8 LS bits in the UBBR0L reg
 
 
-        
     // Enable receiver and transmitter
     UCSR0B = (1 << TXEN0)|(1 << RXEN0)|(1<<RXCIE0); 
     
