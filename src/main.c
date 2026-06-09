@@ -19,11 +19,11 @@ int main(){
 
 DDRB &= ~(1<<PA0);// sets ADC0 as input (Pin(22))
 DDRH |= (1<<PH4); // sets pin 7 as output.
-DDRB |= (PB0);
+DDRB |= (PB0); 
 
 sei();
-SPI_MasterInit();
-uart_init();
+//SPI_MasterInit();
+//uart_init();
 init_adc();
 CTC_init();
 Datatest = 0x01;
