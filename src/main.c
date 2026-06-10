@@ -22,8 +22,8 @@ DDRH |= (1<<PH4); // sets pin 7 as output.
 DDRB |= (PB0); 
 
 sei();
-//SPI_MasterInit();
-//uart_init();
+SPI_MasterInit();
+uart_init();
 init_adc();
 CTC_init();
 Datatest = 0x01;
@@ -31,21 +31,21 @@ Datatest = 0x01;
 
 
 while(1){
-PORTB ^= (1<<PB0);
-_delay_ms(1000);
-// for (int i = 0; i < 16; i++){
-// SPI_MasterTransmit(Datatest);
-// sprintf(buffer, "number is %d \n",Datatest);
-// putstringuart(buffer);
 
-// Datatest++;
-// _delay_ms(1000);
+_delay_ms(1000);
+for (int i = 0; i < 16; i++){
+SPI_MasterTransmit(Datatest);
+sprintf(buffer, "number is %d \n",Datatest);
+putstringuart(buffer);
+
+Datatest++;
+_delay_ms(1000);
 
 }
 Datatest = 0;
 }
 
-//}
+}
 
 
 

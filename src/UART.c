@@ -1,13 +1,13 @@
 #include <avr/io.h>
-#define BAUD 19200
-#define MYUBRRF (F_CPU/(16UL * BAUD) -1) //defines calculation method for baud rate
+#define BAUD 115200
+#define MYUBRRF (F_CPU/(8UL * BAUD) -1) //defines calculation method for baud rate
 // initializes UART
 
 void uart_init(void) {
     UBRR0H = (unsigned char)(MYUBRRF >> 8); // stores the 4 MS bits in the UBRR0H reg
     UBRR0L = (unsigned char)MYUBRRF; // stores the 8 LS bits in the UBBR0L reg
 
-
+      UCSR0A = (1 << U2X0);  // enable double speed mode
     // Enable receiver and transmitter
     UCSR0B = (1 << TXEN0)|(1 << RXEN0)|(1<<RXCIE0); 
     
