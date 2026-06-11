@@ -19,11 +19,11 @@ void uart_init1(void) {
     UBRR1H = (unsigned char)(MYUBRRF >> 8); // stores the 4 MS bits in the UBRR0H reg
     UBRR1L = (unsigned char)MYUBRRF; // stores the 8 LS bits in the UBBR0L reg
 
-      UCSR1A = (1 << U2X0);  // enable double speed mode
+      UCSR1A = (1 << U2X1);  // enable double speed mode
     // Enable receiver and transmitter
     UCSR1B = (1 << TXEN1)|(1 << RXEN1)|(1<<RXCIE1); 
     
-    UCSR1C = (1 << UCSZ01)|(1<<(UCSZ11));
+    UCSR1C = (1 << UCSZ10)|(1<<(UCSZ11));
 }
 
 
@@ -60,7 +60,7 @@ char getcharuart1()
     while(!(UCSR1A & (1<<RXC1))); // waits for the receive flag is high(receive buffer full)
     return UDR1; // Returns the data from the buffer.
 }
-void putcharuart1(char txmsg)
+void putcharuart1(unsigned char txmsg)
 {
     while(!(UCSR1A & (1<<UDRE1))); // waits for data register empty flag to go high
     UDR1 = txmsg; // writes to TX buffer(I/o data register)

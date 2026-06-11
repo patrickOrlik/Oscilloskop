@@ -23,6 +23,7 @@ void CTC_init (void)
     TIMSK0 |= (1<<OCIE1A); // enable interrupt
 }
 
+
 void external_int()
 {
     DDRE &=~(1<<5);
