@@ -23,7 +23,7 @@ volatile unsigned char Data;
 volatile int count = 0;
 unsigned char SelectCounter =0;
 volatile int Datalength =0;
-int indexcount = 0;
+volatile int indexcount = 0;
 unsigned char ADCdataA[30];
 unsigned char ADCdataB[30];
 unsigned char RXdata[256];
@@ -59,7 +59,7 @@ int main()
     while (1)
     {
         if (Adcready){
-       Uart1Transmit(37,0x02,ADCdataB);
+       Uart1Transmit(OscSettings[1]+7,0x02,ADCdataB);
         Adcready = false;
         
         }
@@ -117,8 +117,8 @@ int main()
 
 
         case SEND:
-        OscSettings[0] = (RXdata[4]<< 8) | RXdata[5];
-        OscSettings[1] =(RXdata[6]<< 8) | RXdata[7];
+        OscSettings[0] = (RXdata[5]<< 8) | RXdata[4];
+        OscSettings[1] =(RXdata[7]<< 8) | RXdata[6];
         timer1_SetFreq(OscSettings[0]);
         Receiveflag = false;
 
@@ -147,7 +147,7 @@ ISR(ADC_vect)
 
    ADCdataA[indexcount] = ADC;
    indexcount++;
-   if(indexcount == OscSettings[1]){
+   if(indexcount >= OscSettings[1]){
     memcpy(ADCdataB,ADCdataA,OscSettings[1]);
    indexcount = 0;
    Adcready = true;
