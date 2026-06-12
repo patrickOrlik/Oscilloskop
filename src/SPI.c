@@ -23,7 +23,13 @@ return SPDR;
 ;
 }
 
-
+void SPI_FpgaTransmit(unsigned char type,unsigned char data){
+    SPI_MasterTransmit(0xFF),
+    SPI_MasterTransmit(type);
+    SPI_MasterTransmit(data);
+    SPI_MasterTransmit(0xFF ^ type ^ data);
+    
+}
 void SPI_SlaveInit(void)
 {
 DDRB |=(1<<PB3); //direction for MISO (OUTPUT) must be set first!

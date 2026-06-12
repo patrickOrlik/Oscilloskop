@@ -11,16 +11,23 @@
 #include "ssd1306.h"
 #include "I2C.h"
 #include <string.h>
+#define BTN 1 
+#define SEND 2
+#define START 3
+
+enum buttons { BTN0,BTN1,BTN2,BTN3};
 
 void Uart1Transmit(uint16_t Dlength, char type, unsigned char data[]);
 char buffer[32];
 volatile unsigned char Data;
 volatile int count = 0;
+unsigned char counter =0;
 volatile int Datalength =0;
 int indexcount = 0;
-volatile unsigned char ADCdataA[30];
-volatile unsigned char ADCdataB[30];
-volatile unsigned char RXdata[256];
+unsigned char ADCdataA[30];
+unsigned char ADCdataB[30];
+unsigned char RXdata[256];
+unsigned char Settings[4] = {0,3,0x7f,0x05};
 volatile bool Receiveflag = false;
 
 volatile bool Adcready = false; // Used for checking if Adc is ready.
@@ -46,22 +53,81 @@ int main()
     InitializeDisplay();
     clear_display();
 
+    
+
+
     while (1)
     {
         if (Adcready){
-        Uart1Transmit(37,0x02,ADCdataB);
+       Uart1Transmit(37,0x02,ADCdataB);
         Adcready = false;
         
         }
     if(Receiveflag){
-        clear_display();
         
-        sprintf(buffer,"[0]:%02X,[1]:%02X",RXdata[0],RXdata[1]);
-        sendStrXY(buffer,2,2);
-        _delay_ms(10000);
-        Receiveflag = false;
         
+        switch(RXdata[4]){
+        case BTN:
+             switch(RXdata[5]){
+                case BTN0:
+                SPI_FpgaTransmit(0x00,0x01);
+               SPI_FpgaTransmit(0x01,0x7F);
+               SPI_FpgaTransmit(0x02,0x05);
+             
+               Receiveflag = false;
 
+                break;
+                
+                case BTN1:
+                counter++;
+                Settings[0]=counter;
+                Uart1Transmit(12,1,Settings);
+                if (counter == 3){
+                    counter = 0;
+                }
+                Receiveflag = false;
+
+                break;
+                case BTN2:
+                Receiveflag = false;
+
+                break;
+
+                case BTN3:
+                SPI_FpgaTransmit(0x04,0x00);
+                memset(Settings,0,4);
+                Receiveflag = false;
+
+                break;
+
+
+                default:
+                Receiveflag = false;
+                break;
+
+
+                
+             }
+
+            
+        break;
+
+
+
+        case SEND:
+        sendStrXY("SEND has been pressed",2,2);
+        break;
+        case START:
+          sendStrXY("START has been pressed",2,2);
+        break;
+    
+        default:
+        continue;
+
+
+        }
+        
+       
     }
 
    
@@ -109,10 +175,10 @@ ISR(USART1_RX_vect)
                 
     
             }
-            else if (count == Datalength +7)
+            else if (count == Datalength)
             {
                  
-                if(RXdata[Datalength+6] != 0x00 || RXdata[Datalength+5] != 0x00){
+                if(RXdata[Datalength] == 0x00 && RXdata[Datalength-1] == 0x00){
                     
                     count = 0;
                     Receiveflag = true;
