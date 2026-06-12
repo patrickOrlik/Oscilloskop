@@ -21,13 +21,14 @@ void Uart1Transmit(uint16_t Dlength, char type, unsigned char data[]);
 char buffer[32];
 volatile unsigned char Data;
 volatile int count = 0;
-unsigned char counter =0;
+unsigned char SelectCounter =0;
 volatile int Datalength =0;
 int indexcount = 0;
 unsigned char ADCdataA[30];
 unsigned char ADCdataB[30];
 unsigned char RXdata[256];
 unsigned char Settings[4] = {0,3,0x7f,0x05};
+uint16_t OscSettings[2] = {10000,30}; //stores Osciloscope settings [0]= Sample rate [1]= Packet length
 volatile bool Receiveflag = false;
 
 volatile bool Adcready = false; // Used for checking if Adc is ready.
@@ -48,14 +49,13 @@ int main()
     SPI_MasterInit();
     uart_init1();
     init_adc();
-    CTC_init();
-    I2C_Init();
-    InitializeDisplay();
-    clear_display();
+    timer1_SetFreq(OscSettings[0]);
+    //I2C_Init();
+    //InitializeDisplay();
+    //clear_display();
+    Uart1Transmit(12,1,Settings);
 
     
-
-
     while (1)
     {
         if (Adcready){
@@ -70,25 +70,25 @@ int main()
         case BTN:
              switch(RXdata[5]){
                 case BTN0:
-                SPI_FpgaTransmit(0x00,0x01);
-               SPI_FpgaTransmit(0x01,0x7F);
-               SPI_FpgaTransmit(0x02,0x05);
-             
+                Settings[SelectCounter+1]= RXdata[6];
+                Uart1Transmit(12,1,Settings);
+                SPI_FpgaTransmit((SelectCounter-1),RXdata[6]);
                Receiveflag = false;
 
                 break;
                 
                 case BTN1:
-                counter++;
-                Settings[0]=counter;
+                SelectCounter++;
+                Settings[0]=SelectCounter;
                 Uart1Transmit(12,1,Settings);
-                if (counter == 3){
-                    counter = 0;
+                if (SelectCounter == 3){
+                    SelectCounter = 0;
                 }
                 Receiveflag = false;
 
                 break;
                 case BTN2:
+                SPI_FpgaTransmit(0x03,0x00);
                 Receiveflag = false;
 
                 break;
@@ -96,6 +96,8 @@ int main()
                 case BTN3:
                 SPI_FpgaTransmit(0x04,0x00);
                 memset(Settings,0,4);
+                Uart1Transmit(12,1,Settings);
+
                 Receiveflag = false;
 
                 break;
@@ -115,13 +117,19 @@ int main()
 
 
         case SEND:
-        sendStrXY("SEND has been pressed",2,2);
+        OscSettings[0] = (RXdata[4]<< 8) | RXdata[5];
+        OscSettings[1] =(RXdata[6]<< 8) | RXdata[7];
+        timer1_SetFreq(OscSettings[0]);
+        Receiveflag = false;
+
+
         break;
         case START:
-          sendStrXY("START has been pressed",2,2);
+          Receiveflag = false;
         break;
     
         default:
+         Receiveflag = false;
         continue;
 
 
@@ -139,8 +147,8 @@ ISR(ADC_vect)
 
    ADCdataA[indexcount] = ADC;
    indexcount++;
-   if(indexcount == 30){
-    memcpy(ADCdataB,ADCdataA,30);
+   if(indexcount == OscSettings[1]){
+    memcpy(ADCdataB,ADCdataA,OscSettings[1]);
    indexcount = 0;
    Adcready = true;
    }
@@ -148,7 +156,7 @@ ISR(ADC_vect)
 }
 
 // Timer interrupt service routine. updates channel and enables adc
-ISR(TIMER0_COMPA_vect)
+ISR(TIMER1_COMPA_vect)
 {
     // Start ADC conversion
     ADCSRA |= (1 << ADSC); // enables adc

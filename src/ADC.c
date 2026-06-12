@@ -2,7 +2,6 @@
 void init_adc()
 {
     ADCSRA |= (1 << ADPS0) | (1 << ADPS1) | (1 << ADPS2); // intern clock 125khz
-    ADMUX &= ~(1 << REFS0)|(1<<REFS1);      // Voltage reference selection
     ADCSRA |= (1 << ADEN) | (1 << ADIE);                  // enable adc and interrupt complete
     ADMUX = 0x40; // sets admux register to voltage reference selection and chooses admux= 0 which picks channel ADC0
    
@@ -23,6 +22,17 @@ void CTC_init (void)
     TIMSK0 |= (1<<OCIE1A); // enable interrupt
 }
 
+void timer1_SetFreq(uint16_t freq)
+{
+    if (freq == 0) {
+        TCCR1B = (1<<WGM12);                
+        TIMSK1 &= ~(1<<OCIE1A);
+        return;
+    }
+    TCCR1B = (1<<WGM12) | (1<<CS11);         // CTC, prescaler 8
+    OCR1A  = (F_CPU / 8UL / freq) - 1;
+    TIMSK1 |= (1<<OCIE1A);// enables interrupt
+}
 
 void external_int()
 {
