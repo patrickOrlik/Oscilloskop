@@ -1,7 +1,7 @@
 #include <avr/io.h>
 void init_adc()
 {
-    ADCSRA |= (1 << ADPS0) | (1 << ADPS1) | (1 << ADPS2); // intern clock 125khz
+    ADCSRA |=  (1 << ADPS0) | (1 << ADPS2); // intern clock
     ADCSRA |= (1 << ADEN) | (1 << ADIE);                  // enable adc and interrupt complete
     ADMUX = 0x40; // sets admux register to voltage reference selection and chooses admux= 0 which picks channel ADC0
    

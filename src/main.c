@@ -24,8 +24,8 @@ volatile int count = 0;
 unsigned char SelectCounter =0;
 volatile int Datalength =0;
 volatile int indexcount = 0;
-unsigned char ADCdataA[30];
-unsigned char ADCdataB[30];
+unsigned char ADCdataA[1000];
+unsigned char ADCdataB[1000];
 unsigned char RXdata[256];
 unsigned char Settings[4] = {0,3,0x7f,0x05};
 uint16_t OscSettings[2] = {10000,30}; //stores Osciloscope settings [0]= Sample rate [1]= Packet length
@@ -117,8 +117,8 @@ int main()
 
 
         case SEND:
-        OscSettings[0] = (RXdata[5]<< 8) | RXdata[4];
-        OscSettings[1] =(RXdata[7]<< 8) | RXdata[6];
+        OscSettings[0] = (RXdata[5]<< 8) | RXdata[6];
+        OscSettings[1] =(RXdata[7]<< 8) | RXdata[8];
         timer1_SetFreq(OscSettings[0]);
         Receiveflag = false;
 
