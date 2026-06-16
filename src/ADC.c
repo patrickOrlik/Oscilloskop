@@ -1,9 +1,11 @@
 #include <avr/io.h>
+#include "UART.h"
+#include <stdio.h>
 void init_adc()
 {
     ADCSRA |= (1 << ADPS2); // intern clock
     ADCSRA |= (1 << ADEN) | (1 << ADIE);  // enable adc and interrupt complete
-    ADMUX |= (1<< REFS0) | (1<< ADLAR); // sets admux register to voltage reference selection and chooses admux= 0 which picks channel ADC0
+    ADMUX |= (1<< REFS0) | (1<<ADLAR); // sets admux register to voltage reference selection and chooses admux= 0 which picks channel ADC0
    
 }
 
@@ -24,14 +26,16 @@ void CTC_init (void)
 
 void timer1_SetFreq(uint16_t freq)
 {
-    if (freq == 0) {
-        TCCR1B = (1<<WGM12);                
+    if (freq == 0) {               
         TIMSK1 &= ~(1<<OCIE1A);
         return;
     }
-    TCCR1B = (1<<WGM12) | (1<<CS11);         // CTC, prescaler 8
-    OCR1A  = (F_CPU / 8UL / freq) - 1;
+    TCCR1B = (1<<WGM12) | (1<<CS11) | (1 << CS10);         // CTC, prescaler 64
+    OCR1A  = (uint16_t)((uint32_t)(250000) / freq) - 1;
     TIMSK1 |= (1<<OCIE1A);// enables interrupt
+     char buff[50];
+    sprintf(buff,"%d",OCR1A);
+    putstringuart0(buff);
 }
 
 void external_int()

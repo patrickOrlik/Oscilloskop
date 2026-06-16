@@ -55,6 +55,7 @@ int main()
     sei();
     SPI_MasterInit();
     uart_init1();
+    uart_init0();
     init_adc();
     timer1_SetFreq(OscSettings[0]);
     Uart1Transmit(12,1,Settings);
@@ -74,7 +75,7 @@ int main()
                 case BTN0:
                 Settings[SelectCounter+1]= RXdata[6];
                 Uart1Transmit(12,1,Settings);
-                SPI_FpgaTransmit((SelectCounter-1),RXdata[6]);
+                SPI_FpgaTransmit((SelectCounter),RXdata[6]);
                Receiveflag = false;
 
                 break;
@@ -133,7 +134,7 @@ int main()
         SPI_FpgaTransmit(run,0x00);
 
         for(int i = 0; i <= 255; i++){
-            timer1_SetFreq(1000+(i*300));
+            //timer1_SetFreq(1000+(i*300));
             SPI_FpgaTransmit(freq,i);
             while(!Adcready);
             memcpy(SortingArray,ADCdataB,100);
@@ -162,7 +163,7 @@ int main()
 ISR(ADC_vect)
 {
 
-   ADCdataA[indexcount] = ADC;
+   ADCdataA[indexcount] = ADCH;
    indexcount++;
    if(indexcount >= OscSettings[1]){
     memcpy(ADCdataB,ADCdataA,OscSettings[1]);

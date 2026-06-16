@@ -51,7 +51,7 @@ void putstringuart0(char *str)
 {
     while (*str) 
     {
-        putcharUsart(*str);
+        putcharuart0(*str);
         str++;
     }
 }
