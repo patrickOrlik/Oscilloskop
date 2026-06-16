@@ -11,32 +11,39 @@
 #include "ssd1306.h"
 #include "I2C.h"
 #include <string.h>
+// Enums and definitions
 #define BTN 1 
 #define SEND 2
 #define START 3
-
 enum buttons { BTN0,BTN1,BTN2,BTN3};
-
+enum SPI_Types{shape,ampl,freq,run,reset};
 void Uart1Transmit(uint16_t Dlength, char type, unsigned char data[]);
-char buffer[32];
+int comp(const void *a, const void *b);
+// Declarations of all variables and flags
 volatile unsigned char Data;
 volatile int count = 0;
 unsigned char SelectCounter =0;
 volatile int Datalength =0;
 volatile int indexcount = 0;
+volatile bool Adcready = false; // Used for checking if Adc is ready.
+volatile bool RX1_COMPLETE_FLAG = false;
+volatile unsigned int channel = 1; // channel selected
+volatile unsigned char Adcvalue;    // Used for storing ADCvalues
+volatile bool Receiveflag = false;
+unsigned char amplitude;
+
+
+// declaration of all data arrays 
 unsigned char ADCdataA[1000];
 unsigned char ADCdataB[1000];
 unsigned char RXdata[256];
 unsigned char Settings[4] = {0,3,0x7f,0x05};
 uint16_t OscSettings[2] = {10000,30}; //stores Osciloscope settings [0]= Sample rate [1]= Packet length
-volatile bool Receiveflag = false;
+unsigned char SortingArray[100];
+unsigned char BodeArray[256];
 
-volatile bool Adcready = false; // Used for checking if Adc is ready.
-volatile bool RX1_COMPLETE_FLAG = false;
 
-volatile unsigned int channel = 1; // channel selected
-volatile unsigned char Adcvalue;    // Used for storing ADCvalues
-unsigned char buf[6] = {0x01,0x010,0x17,0x04,0x10};
+
 int main()
 {
 
@@ -50,9 +57,6 @@ int main()
     uart_init1();
     init_adc();
     timer1_SetFreq(OscSettings[0]);
-    //I2C_Init();
-    //InitializeDisplay();
-    //clear_display();
     Uart1Transmit(12,1,Settings);
 
     
@@ -61,11 +65,9 @@ int main()
         if (Adcready){
        Uart1Transmit(OscSettings[1]+7,0x02,ADCdataB);
         Adcready = false;
-        
         }
     if(Receiveflag){
-        
-        
+          
         switch(RXdata[4]){
         case BTN:
              switch(RXdata[5]){
@@ -125,6 +127,21 @@ int main()
 
         break;
         case START:
+        OscSettings[1]= 100;
+        SPI_FpgaTransmit(shape,0x03);
+        SPI_FpgaTransmit(ampl,0xFF);
+        SPI_FpgaTransmit(run,0x00);
+
+        for(int i = 0; i <= 255; i++){
+            timer1_SetFreq(1000+(i*300));
+            SPI_FpgaTransmit(freq,i);
+            while(!Adcready);
+            memcpy(SortingArray,ADCdataB,100);
+            qsort(SortingArray,100,sizeof(unsigned char),comp);
+            unsigned char amplitude = (SortingArray[99]-SortingArray[0]);
+            BodeArray[i] = (1023-amplitude);
+        }
+        Uart1Transmit(263,0x03,BodeArray);
           Receiveflag = false;
         break;
     
@@ -213,4 +230,7 @@ PORTB ^= (1<< PB7);
    }
    putcharuart1(0x00);
    putcharuart1(0x00);
+}
+int comp(const void *a, const void *b) {
+    return (*(int *)a - *(int *)b);
 }
