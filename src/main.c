@@ -12,26 +12,26 @@
 #include "I2C.h"
 #include <string.h>
 // Enums and definitions
+#define Srate 0
+#define Rlen 1
 #define BTN 1 
 #define SEND 2
 #define START 3
 enum buttons { BTN0,BTN1,BTN2,BTN3};
 enum SPI_Types{shape,ampl,freq,run,reset};
-void Uart1Transmit(uint16_t Dlength, char type, unsigned char data[]);
 int comp(const void *a, const void *b);
 // Declarations of all variables and flags
 volatile unsigned char Data;
 volatile int count = 0;
-unsigned char SelectCounter =0;
-volatile int Datalength =0;
+unsigned char SelectCounter = 0;
+volatile int Datalength = 0;
 volatile int indexcount = 0;
 volatile bool Adcready = false; // Used for checking if Adc is ready.
-volatile bool RX1_COMPLETE_FLAG = false;
-volatile unsigned int channel = 1; // channel selected
 volatile unsigned char Adcvalue;    // Used for storing ADCvalues
 volatile bool Receiveflag = false;
+unsigned char Protocol = 0;// change this to change UART protocol 
 unsigned char amplitude;
-
+unsigned char Chksum;
 
 // declaration of all data arrays 
 unsigned char ADCdataA[1000];
@@ -51,6 +51,7 @@ int main()
     DDRB &= ~(1 << PA0); // sets ADC0 as input (Pin(22))
     DDRH |= (1 << PH4);  // sets pin 7 as output.
     DDRB |= (PB0);
+    
 
     sei();
     SPI_MasterInit();
@@ -67,8 +68,7 @@ int main()
        Uart1Transmit(OscSettings[1]+7,0x02,ADCdataB);
         Adcready = false;
         }
-    if(Receiveflag){
-          
+    if(Receiveflag){   
         switch(RXdata[4]){
         case BTN:
              switch(RXdata[5]){
@@ -104,8 +104,6 @@ int main()
                 Receiveflag = false;
 
                 break;
-
-
                 default:
                 Receiveflag = false;
                 break;
@@ -117,14 +115,18 @@ int main()
             
         break;
 
-
-
         case SEND:
-        OscSettings[0] = (RXdata[5]<< 8) | RXdata[6];
-        OscSettings[1] =(RXdata[7]<< 8) | RXdata[8];
-        timer1_SetFreq(OscSettings[0]);
+        OscSettings[Srate] = (RXdata[5]<< 8) | RXdata[6];
+        OscSettings[Rlen] =(RXdata[7]<< 8) | RXdata[8];
+        int MinRlen = (7 * OscSettings[Srate]) / (11520 - OscSettings[Srate]);
+        if (OscSettings[Rlen] < MinRlen){
+            OscSettings[Rlen] = MinRlen;
+            char buff[50];
+            sprintf(buff,"Too low Rlen set. Rlen set to: %d",OscSettings[Rlen]);
+            putstringuart0(buff);
+        }
+        timer1_SetFreq(OscSettings[Srate]);
         Receiveflag = false;
-
 
         break;
         case START:
@@ -134,13 +136,14 @@ int main()
         SPI_FpgaTransmit(run,0x00);
 
         for(int i = 0; i <= 255; i++){
-            //timer1_SetFreq(1000+(i*300));
+            timer1_SetFreq(1000+(i*100));
             SPI_FpgaTransmit(freq,i);
-            while(!Adcready);
+            Adcready = false; while(!Adcready);   // venter et  par ADC interrupt før vi måler
+            Adcready = false; while(!Adcready); 
             memcpy(SortingArray,ADCdataB,100);
             qsort(SortingArray,100,sizeof(unsigned char),comp);
             unsigned char amplitude = (SortingArray[99]-SortingArray[0]);
-            BodeArray[i] = (1023-amplitude);
+            BodeArray[i] = (amplitude-255);
         }
         Uart1Transmit(263,0x03,BodeArray);
           Receiveflag = false;
@@ -165,8 +168,8 @@ ISR(ADC_vect)
 
    ADCdataA[indexcount] = ADCH;
    indexcount++;
-   if(indexcount >= OscSettings[1]){
-    memcpy(ADCdataB,ADCdataA,OscSettings[1]);
+   if(indexcount >= OscSettings[Rlen]){
+    memcpy(ADCdataB,ADCdataA,OscSettings[Rlen]);
    indexcount = 0;
    Adcready = true;
    }
@@ -182,6 +185,7 @@ ISR(TIMER1_COMPA_vect)
 ISR(USART1_RX_vect)
 {
     Data = UDR1;
+    
     PORTB ^= (1<< PB7);
            if (Receiveflag) return;// sikrer at vi når at kører alt koden i main når vi har modtaget en pakke
           RXdata[count] = Data;
@@ -203,35 +207,38 @@ ISR(USART1_RX_vect)
             }
             else if (count == Datalength)
             {
+                if (Protocol){
+                        Chksum = 0;
+                   for (int i =0; i <(Datalength); i++){
+                  Chksum = Chksum ^ RXdata[i];
+                   }
                  
-                if(RXdata[Datalength] == 0x00 && RXdata[Datalength-1] == 0x00){
+                   if (!(Chksum ^ RXdata[Datalength])){
+                    count = 0;
+                    Receiveflag = true;
+                   }
+              
+                else {
+                Receiveflag = false;
+                count = 0;
+                }
+               }
+                 else {
+
+            
+                     if(RXdata[Datalength] == 0x00 && RXdata[Datalength-1] == 0x00){
                     
                     count = 0;
                     Receiveflag = true;
                 }
-                else {
+                else{ count = 0;
                 Receiveflag = false;
-                count = 0;
+                }       
+               
             }
    
 }
 }
-
-void Uart1Transmit(uint16_t Dlength,char type,unsigned char data[]){
-PORTB ^= (1<< PB7);
-   unsigned char lsb = (unsigned)Dlength & 0xff; // mask the lower 8 bits
- unsigned char msb = (unsigned)Dlength >> 8;   // shift the higher 8 bits
- putcharuart1(0x55);
-   putcharuart1(0xAA);
-   putcharuart1(msb);
-   putcharuart1(lsb);
-   putcharuart1(type);
-   for( int i = 0; i < (Dlength-7); i++ ){
-    putcharuart1(data[i]);
-   }
-   putcharuart1(0x00);
-   putcharuart1(0x00);
-}
 int comp(const void *a, const void *b) {
-    return (*(int *)a - *(int *)b);
+    return (*(const unsigned char *)a - *(const unsigned char *)b);
 }

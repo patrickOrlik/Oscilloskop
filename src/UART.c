@@ -1,4 +1,5 @@
 #include <avr/io.h>
+#include "UART.h"
 #define BAUD 115200
 #define MYUBRRF (F_CPU/(8UL * BAUD) -1) //defines calculation method for baud rate
 
@@ -64,4 +65,42 @@ void putcharuart1(unsigned char txmsg)
 {
     while(!(UCSR1A & (1<<UDRE1))); // waits for data register empty flag to go high
     UDR1 = txmsg; // writes to TX buffer(I/o data register)
+}
+
+void Uart1Transmit(uint16_t Dlength, char type, unsigned char data[]) {
+    if (Protocol == 1)
+        Uart1TransmitLRC8(Dlength, type, data);
+    else
+        Uart1TransmitZ16(Dlength, type, data);
+}
+
+void Uart1TransmitZ16(uint16_t Dlength, char type, unsigned char data[]) {
+    unsigned char lsb = (unsigned)Dlength & 0xff;
+    unsigned char msb = (unsigned)Dlength >> 8;
+    putcharuart1(0x55);
+    putcharuart1(0xAA);
+    putcharuart1(msb);
+    putcharuart1(lsb);
+    putcharuart1(type);
+    for (int i = 0; i < (Dlength - 7); i++)
+        putcharuart1(data[i]);
+    putcharuart1(0x00);
+    putcharuart1(0x00);
+}
+
+void Uart1TransmitLRC8(uint16_t Dlength, char type, unsigned char data[]) {
+    unsigned char lsb = (unsigned)Dlength & 0xff;
+    unsigned char msb = (unsigned)Dlength >> 8;
+    unsigned char chksum = 0x55 ^ 0xAA ^ msb ^ lsb ^ (unsigned char)type;
+    for (int i = 0; i < (Dlength - 7); i++)
+        chksum ^= data[i];
+    putcharuart1(0x55);
+    putcharuart1(0xAA);
+    putcharuart1(msb);
+    putcharuart1(lsb);
+    putcharuart1(type);
+    for (int i = 0; i < (Dlength - 7); i++)
+        putcharuart1(data[i]);
+    putcharuart1(0x00);
+    putcharuart1(chksum);
 }
