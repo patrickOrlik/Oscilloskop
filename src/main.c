@@ -118,9 +118,9 @@ int main()
         case SEND:
         OscSettings[Srate] = (RXdata[5]<< 8) | RXdata[6];
         OscSettings[Rlen] =(RXdata[7]<< 8) | RXdata[8];
-        int MinRlen = (7 * OscSettings[Srate]) / (11520 - OscSettings[Srate]);
+        long MinRlen = (7L * OscSettings[Srate]) / (11520L - OscSettings[Srate]);
         if (OscSettings[Rlen] < MinRlen){
-            OscSettings[Rlen] = MinRlen;
+            OscSettings[Rlen] = (uint16_t)MinRlen;
             char buff[50];
             sprintf(buff,"Too low Rlen set. Rlen set to: %d",OscSettings[Rlen]);
             putstringuart0(buff);
@@ -136,7 +136,7 @@ int main()
         SPI_FpgaTransmit(run,0x00);
 
         for(int i = 0; i <= 255; i++){
-            timer1_SetFreq(1000+(i*100));
+            timer1_SetFreq(1000+(i*300));
             SPI_FpgaTransmit(freq,i);
             Adcready = false; while(!Adcready);   // venter et  par ADC interrupt før vi måler
             Adcready = false; while(!Adcready); 
