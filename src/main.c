@@ -36,6 +36,8 @@ unsigned char Chksum;
 // declaration of all data arrays 
 unsigned char ADCdataA[1000];
 unsigned char ADCdataB[1000];
+volatile unsigned char *writeBuffer = ADCdataA;
+volatile unsigned char *readBuffer  = ADCdataB;
 unsigned char RXdata[256];
 unsigned char Settings[4] = {0,3,0x7f,0x05};
 uint16_t OscSettings[2] = {10000,30}; //stores Osciloscope settings [0]= Sample rate [1]= Packet length
@@ -65,7 +67,7 @@ int main()
     while (1)
     {
         if (Adcready){
-       Uart1Transmit(OscSettings[1]+7,0x02,ADCdataB);
+       Uart1Transmit(OscSettings[1]+7,0x02,(unsigned char *)readBuffer);
         Adcready = false;
         }
     if(Receiveflag){   
@@ -135,15 +137,18 @@ int main()
         SPI_FpgaTransmit(ampl,0xFF);
         SPI_FpgaTransmit(run,0x00);
 
-        for(int i = 0; i <= 255; i++){
-            timer1_SetFreq(1000+(i*300));
+        for(int i = 1; i <= 255; i++){
+            uint32_t fpga_freq = (i == 0) ? 0 : (24UL + (uint32_t)(i - 1) * 23676UL / 254UL);
+            timer1_SetFreq((uint16_t)(fpga_freq * 2));
             SPI_FpgaTransmit(freq,i);
             Adcready = false; while(!Adcready);   // venter et  par ADC interrupt før vi måler
-            Adcready = false; while(!Adcready); 
+            Adcready = false; while(!Adcready);
+            cli(); 
             memcpy(SortingArray,ADCdataB,100);
+            sei();
             qsort(SortingArray,100,sizeof(unsigned char),comp);
-            unsigned char amplitude = (SortingArray[99]-SortingArray[0]);
-            BodeArray[i] = (amplitude-255);
+            unsigned char amplitude = (SortingArray[0]-SortingArray[99]);
+            BodeArray[i] = (255-amplitude);
         }
         Uart1Transmit(263,0x03,BodeArray);
           Receiveflag = false;
@@ -165,14 +170,20 @@ int main()
 
 ISR(ADC_vect)
 {
-
-   ADCdataA[indexcount] = ADCH;
+   
+   writeBuffer[indexcount] = ADCH;
    indexcount++;
    if(indexcount >= OscSettings[Rlen]){
-    memcpy(ADCdataB,ADCdataA,OscSettings[Rlen]);
-   indexcount = 0;
-   Adcready = true;
+//     memcpy(ADCdataB,ADCdataA,OscSettings[Rlen]);
+//    indexcount = 0;
+//    Adcready = true;
+       volatile unsigned char *tmp = readBuffer;
+        readBuffer = writeBuffer;
+        writeBuffer = tmp;
+        indexcount = 0;
+        Adcready = true;
    }
+   
 
 }
 

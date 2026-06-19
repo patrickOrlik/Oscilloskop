@@ -10,7 +10,7 @@ void SPI_MasterInit(void)
     SPCR |= (1<<SPE) | (1<<MSTR);               // Enable SPI, Master
     SPCR &= ~(1 << CPOL);   // CPOL = 0
     SPCR &= ~(1 << CPHA);   // CPHA = 0 
-    SPCR |= (1<<SPR1);                          // fclk/64 (250 kHz if 16MHz)
+    SPCR |= (1<<SPR0);                          // fclk/32 (500 kHz if 16MHz)
 }
 
 unsigned char SPI_MasterTransmit(unsigned char cData)

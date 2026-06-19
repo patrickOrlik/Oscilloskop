@@ -5,7 +5,7 @@ void init_adc()
 {
     ADCSRA |= (1 << ADPS2); // intern clock
     ADCSRA |= (1 << ADEN) | (1 << ADIE);  // enable adc and interrupt complete
-    ADMUX |= (1<<ADLAR) | (1<< REFS0); // sets admux register to voltage reference selection and chooses admux= 0 which picks channel ADC0
+    ADMUX |= (1<<ADLAR); // sets admux register to voltage reference selection and chooses admux= 0 which picks channel ADC0
    
 }
 

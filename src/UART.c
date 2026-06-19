@@ -88,18 +88,18 @@ void Uart1TransmitZ16(uint16_t Dlength, char type, unsigned char data[]) {
     putcharuart1(0x00);
 }
 
-void Uart1TransmitLRC8(uint16_t Dlength, char type, unsigned char data[]) {
-    unsigned char lsb = (unsigned)Dlength & 0xff;
-    unsigned char msb = (unsigned)Dlength >> 8;
+void Uart1TransmitLRC8(uint16_t Plength, char type, unsigned char data[]) {
+    unsigned char lsb = (unsigned)Plength & 0xff;
+    unsigned char msb = (unsigned)Plength >> 8;
     unsigned char chksum = 0x55 ^ 0xAA ^ msb ^ lsb ^ (unsigned char)type;
-    for (int i = 0; i < (Dlength - 7); i++)
+    for (int i = 0; i < (Plength - 7); i++)
         chksum ^= data[i];
     putcharuart1(0x55);
     putcharuart1(0xAA);
     putcharuart1(msb);
     putcharuart1(lsb);
     putcharuart1(type);
-    for (int i = 0; i < (Dlength - 7); i++)
+    for (int i = 0; i < (Plength - 7); i++)
         putcharuart1(data[i]);
     putcharuart1(0x00);
     putcharuart1(chksum);
