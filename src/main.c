@@ -40,7 +40,7 @@ volatile unsigned char *writeBuffer = ADCdataA;
 volatile unsigned char *readBuffer  = ADCdataB;
 unsigned char RXdata[256];
 unsigned char Settings[4] = {0,3,0x7f,0x05};
-uint16_t OscSettings[2] = {10000,30}; //stores Osciloscope settings [0]= Sample rate [1]= Packet length
+uint16_t OscSettings[2] = {10000,50}; //stores Osciloscope settings [0]= Sample rate [1]= Packet length
 unsigned char SortingArray[100];
 unsigned char BodeArray[256];
 
