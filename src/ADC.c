@@ -5,14 +5,13 @@ void init_adc()
 {
     ADCSRA |= (1 << ADPS2); // intern clock
     ADCSRA |= (1 << ADEN) | (1 << ADIE);  // enable adc and interrupt complete
-    ADMUX |= (1<<ADLAR); // sets admux register to voltage reference selection and chooses admux= 0 which picks channel ADC0
+    ADMUX |= (1<<ADLAR); // sets admux register to voltage reference selection. and right shift bits to use 8 bit ADC
    
 }
 
-void select_channel(char channel)
+void select_channel(unsigned char channel)
 {
-    ADMUX |= (1<<ADLAR); // Clears the register but keeps the mode selection part intact.
-    ADMUX |= channel;
+    ADMUX = (ADMUX & 0xC0) | (1<<ADLAR) | (channel & 0x1F);
 }
 
 

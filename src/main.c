@@ -11,6 +11,7 @@
 #include "ssd1306.h"
 #include "I2C.h"
 #include <string.h>
+#include "math.h"
 // Enums and definitions
 #define Srate 0
 #define Rlen 1
@@ -29,9 +30,17 @@ volatile int indexcount = 0;
 volatile bool Adcready = false; // Used for checking if Adc is ready.
 volatile unsigned char Adcvalue;    // Used for storing ADCvalues
 volatile bool Receiveflag = false;
+bool bode = false;
+volatile unsigned char lastChannel = 0;
+volatile bool bodeCollect = false;
 unsigned char Protocol = 0;// change this to change UART protocol 
 unsigned char amplitude;
+unsigned char amplitudeRef;
 unsigned char Chksum;
+volatile int channel = 0;
+int dataAcnt = 0;
+int dataBcnt = 0;
+
 
 // declaration of all data arrays 
 unsigned char ADCdataA[1000];
@@ -41,8 +50,11 @@ volatile unsigned char *readBuffer  = ADCdataB;
 unsigned char RXdata[256];
 unsigned char Settings[4] = {0,3,0x7f,0x05};
 uint16_t OscSettings[2] = {10000,50}; //stores Osciloscope settings [0]= Sample rate [1]= Packet length
-unsigned char SortingArray[100];
+unsigned char SortingArrayInput[100];
+unsigned char SortingArrayOutput[100];
 unsigned char BodeArray[256];
+unsigned char bodeCh0[100];
+unsigned char bodeCh1[100];
 
 
 
@@ -132,25 +144,52 @@ int main()
 
         break;
         case START:
-        OscSettings[1]= 100;
+        bode = true;
+        OscSettings[Rlen] = 100;
+        memset(ADCdataA,0,100);
+        memset(ADCdataB,0,100);
         SPI_FpgaTransmit(shape,0x03);
         SPI_FpgaTransmit(ampl,0xFF);
         SPI_FpgaTransmit(run,0x00);
 
         for(int i = 1; i <= 255; i++){
-            uint32_t fpga_freq = (i == 0) ? 0 : (24UL + (uint32_t)(i - 1) * 23676UL / 254UL);
-            timer1_SetFreq((uint16_t)(fpga_freq * 2));
+            dataAcnt = 0;
+           dataBcnt = 0;
+            channel = 0;
+            lastChannel = 0;
+            bodeCollect = false;
+           uint32_t fpga_freq = 24UL + (uint32_t)(i - 1) * 23676UL / 254UL;
+            uint32_t sampleRate = fpga_freq * 20;
+            if (sampleRate > 40000) sampleRate = 40000;
+            if (sampleRate < 2000)  sampleRate = 2000;
+              timer1_SetFreq((uint16_t)sampleRate);
             SPI_FpgaTransmit(freq,i);
-            Adcready = false; while(!Adcready);   // venter et  par ADC interrupt før vi måler
-            Adcready = false; while(!Adcready);
-            cli(); 
-            memcpy(SortingArray,ADCdataB,100);
-            sei();
-            qsort(SortingArray,100,sizeof(unsigned char),comp);
-            unsigned char amplitude = (SortingArray[0]-SortingArray[99]);
-            BodeArray[i] = (255-amplitude);
+            bodeCollect = false;
+           while(!bodeCollect);
+            cli();
+            memcpy(SortingArrayInput,ADCdataA,100);
+            memcpy(SortingArrayOutput,ADCdataB,100);
+            if(i == 1){
+                 qsort(SortingArrayInput,100,sizeof(unsigned char),comp);
+                 amplitudeRef = (SortingArrayInput[99]-SortingArrayInput[0]);
+                 BodeArray[i] = amplitudeRef;
+                 char buff[50];
+            sprintf(buff,"ref amplitude is %d \n",amplitudeRef);
+            putstringuart0(buff);
+            }
+            qsort (SortingArrayOutput,100,sizeof(unsigned char),comp);
+             amplitude = (SortingArrayOutput[99]-SortingArrayOutput[0]);
+            
+             BodeArray[i] = (unsigned char)((255UL * amplitude) / amplitudeRef);
+             char buff[50];
+             sprintf(buff,"dampening is %d %d",amplitude,BodeArray[i]);
+            putstringuart0(buff);
+        
+             sei();
         }
         Uart1Transmit(263,0x03,BodeArray);
+        SPI_FpgaTransmit(run,0x00);
+        bode = false;
           Receiveflag = false;
         break;
     
@@ -170,29 +209,46 @@ int main()
 
 ISR(ADC_vect)
 {
-   
-   writeBuffer[indexcount] = ADCH;
-   indexcount++;
-   if(indexcount >= OscSettings[Rlen]){
-//     memcpy(ADCdataB,ADCdataA,OscSettings[Rlen]);
-//    indexcount = 0;
-//    Adcready = true;
-       volatile unsigned char *tmp = readBuffer;
+    if (bode) {
+        
+        if (lastChannel == 0 && dataAcnt < 100) {
+            ADCdataA[dataAcnt++] = ADCH;
+        } else if (lastChannel == 1 && dataBcnt < 100) {
+            ADCdataB[dataBcnt++] = ADCH;
+        }
+        if (dataBcnt >= 100 && dataAcnt >= 100) {
+            dataAcnt = 0;
+            dataBcnt = 0;
+            bodeCollect = true;
+            
+        }
+    }
+    else{
+    writeBuffer[indexcount] = ADCH;
+    indexcount++;
+    if(indexcount >= OscSettings[Rlen]){
+        volatile unsigned char *tmp = readBuffer;
         readBuffer = writeBuffer;
         writeBuffer = tmp;
         indexcount = 0;
         Adcready = true;
-   }
-   
-
+    }
+}
 }
 
-// Timer interrupt service routine. updates channel and enables adc
 ISR(TIMER1_COMPA_vect)
 {
-    // Start ADC conversion
-    ADCSRA |= (1 << ADSC); // enables adc
+    if (bode) {
+        lastChannel = channel;
+        select_channel(channel);
+        channel++;
+        if (channel == 2) { channel = 0; }
+    } else {
+        select_channel(0);
+    }
+    ADCSRA |= (1 << ADSC);
 }
+
 ISR(USART1_RX_vect)
 {
     Data = UDR1;
